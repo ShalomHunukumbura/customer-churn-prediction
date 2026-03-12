@@ -31,9 +31,7 @@ Additional supporting features are included (`avg_session_minutes`, `monthly_spe
 - `src/cloud/s3_model_ops.py`: Optional S3 upload helper
 - `scripts/retrain.sh`: End-to-end retraining script
 - `scripts/demo_api.sh`: Curl-based API demonstration script
-- `docs/operations_plan.md`: Scale/retrain/monitoring/cost details
-- `docs/architecture.md`: Architecture diagram
-- `docs/demo_script.md`: Recording checklist/script
+- `docs/s3_evidence.md`: S3 artifact upload evidence and verification output
 - `tests/`: Lightweight validation tests
 
 ## 3. Data Design
@@ -127,22 +125,40 @@ make all
 make serve
 ```
 
-## 8. Optional Cloud Bonus (AWS)
+## 8. AWS S3 bucket
 - Set `AWS_S3_BUCKET` and optional `AWS_S3_PREFIX`
 - Upload artifacts:
 ```bash
 python -m src.cloud.s3_model_ops
 ```
+- Verify uploaded artifacts:
+```bash
+aws s3 ls s3://<your-bucket>/<your-prefix>/
+```
+- Proof details in `docs/s3_evidence.md`
 
 ## 9. Deployment Notes
 - Dockerfile is included for containerized serving
 - Retraining script is included: `scripts/retrain.sh`
 - Detailed monitoring/retraining/scaling/cost strategy: `docs/operations_plan.md`
 
-## 10. Demo Recording Script (10-15 mins)
-1. Business problem and why churn prediction matters.
-2. Dataset schema, missing data, and churn distribution (`reports/eda_summary.md`).
-3. Feature engineering and preprocessing decisions.
-4. Model comparison and threshold selection (`models/metrics.json`).
-5. API demo (`/predict` and `/predict/batch`).
-6. Ops plan (scale/retrain/monitoring/cost from `docs/operations_plan.md`).
+## 10. Optimization & Scaling Explanation
+### Scale to 100k+ records
+- Use a hybrid design: real-time API for single requests and batch jobs for bulk scoring.
+- Run multiple API workers behind a load balancer/autoscaling group.
+- Store batch inputs in columnar format (Parquet) and process asynchronously via queue workers.
+
+### Retraining approach
+- Retrain on a schedule (monthly or weekly) using newly labeled outcomes.
+- Use evaluation gates (minimum churn-class F1/PR-AUC) before promoting a new model.
+- Version artifacts and keep rollback capability to the previous stable model.
+
+### Monitoring approach
+- API monitoring: p95 latency, error rate, throughput.
+- Model/data monitoring: feature drift, prediction distribution drift, and post-label metric drift.
+- Alert when thresholds are breached (for example, latency spike or significant F1 drop).
+
+### Cloud cost considerations
+- Keep training as scheduled jobs (avoid always-on compute).
+- Store artifacts in S3 and load them at service startup.
+- Use low-cost compute tiers for dev/test and spot/preemptible instances for batch workloads.
