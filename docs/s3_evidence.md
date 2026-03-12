@@ -29,7 +29,7 @@ Expected path pattern:
 aws s3 ls s3://shalom-churn-model-2026/churn-model/
 ```
 
-## 5) Verification Output (Paste Your Actual Output)
+## 5) Verification Output
 
 ```text
 2026-03-12 17:18:23       6733 churn_model.pkl
